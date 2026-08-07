@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VisionLoop — Controlador</title>
+<link rel="icon" href="/assets/LogoSemFundo.png" type="image/png">
+<link rel="stylesheet" href="/css/controller.css">
+</head>
+<body>
+
+<header>
+  <div style="display:flex; align-items:center; gap:14px;">
+    <button class="back-btn" onclick="goBack()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 19-7-7 7-7"></path><path d="M19 12H5"></path></svg>
+      Voltar
+    </button>
+    <div class="logo">
+      <div class="logo-icon"><img src="/assets/LogoSemFundo.png" alt="VisionLoop"></div>
+      VisionLoop
+      <span id="appVersion" style="font-size:10px; font-weight:400; color:var(--muted); margin-left:2px;"></span>
+    </div>
+  </div>
+  <div style="display:flex; align-items:center; gap:16px;">
+    <div id="storageUsage" style="font-size:12px; color:var(--muted); display:none; align-items:center; gap:5px;">
+      💾 <span id="storageUsageValue"></span>
+    </div>
+    <div class="status-bar">
+      <span class="status-dot" id="statusDot"></span>
+      <span id="statusText">Conectando...</span>
+    </div>
+    <button id="themeToggle" onclick="toggleTheme()" aria-label="Alternar tema">
+      <svg id="iconMoon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"></path></svg>
+      <svg id="iconSun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"></path></svg>
+    </button>
+  </div>
+</header>
+
+<main>
+  <div class="tv-panel-wrap">
+    <button class="tv-panel-bar" id="tvPanelBar" onclick="toggleTvPanel()">
+      <div class="tv-panel-bar-left">
+        <svg class="tv-panel-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="15" x="2" y="7" rx="2"></rect><polyline points="17 2 12 7 7 2"></polyline></svg>
+        <span>TVs conectadas</span>
+        <span class="tv-count" id="tvCount">0</span>
+      </div>
+      <svg class="tv-panel-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"></path></svg>
+    </button>
+    <div class="tv-panel-dropdown" id="tvPanelDropdown">
+      <div class="tv-list" id="tvList">
+        <div class="empty-tvs">
+          <img src="/assets/empty-tv.png" class="empty-tvs-img" alt="">
+          <p>Nenhuma TV conectada.<br>Abra o site na TV e escolha <strong>TV</strong> — ela aparece aqui automaticamente.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <section class="content">
+
+    <!-- A barra de abas foi removida: não existe mais a separação entre
+         "Vídeos" e "Playlists". As duas áreas convivem nesta mesma tela, uma
+         abaixo da outra, e todos os ids e handlers continuam iguais — nenhuma
+         funcionalidade se perdeu na mudança. -->
+
+    <!-- ===== MÍDIA E CONTROLE DA TV (era a aba "Vídeos") ===== -->
+    <div id="panel-videos" style="display:flex; flex-direction:column;">
+
+      <div id="noSelection" class="no-selection">
+        <img src="/assets/select-tv.png" class="no-selection-img" alt="">
+        <h3>Selecione uma TV</h3>
+        <p>Abra o painel de TVs acima para controlar um dispositivo, ou use a transmissão geral abaixo.</p>
+        <div style="margin-top:20px; width:100%; max-width:900px;">
+          <div class="broadcast-section">
+            <div style="display:flex; align-items:center; justify-content:space-between;">
+              <div>
+                <div class="broadcast-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 8V6a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-6"></path><path d="M2 12a9 9 0 0 1 8 8"></path><path d="M2 16a5 5 0 0 1 4 4"></path><line x1="2" x2="2.01" y1="20" y2="20"></line></svg>Transmitir para todas</div>
+                
+              </div>
+              <button class="refresh-btn" onclick="loadVideos()">↻ atualizar</button>
+            </div>
+            <div class="dropzone" id="dropzone-broadcast">
+            <input type="file" id="fileInput-broadcast" accept="video/mp4,.mp4,image/*,.jpg,.jpeg,.png,.webp" multiple style="display:none">
+            <svg class="dropzone-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242"></path><path d="M12 12v9"></path><path d="m16 16-4-4-4 4"></path></svg>
+            <div class="dropzone-text">Arraste vídeos aqui ou <span class="dropzone-link">clique para selecionar</span></div>
+            <div class="dropzone-hint">.mp4 · .jpg · .png · .webp</div>
+<div class="warning-box"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"></path><path d="M12 9v4"></path><path d="M12 17h.01"></path></svg><span>O vídeo NÃO é mais convertido automaticamente — envie já em .mp4 (H.264 + AAC), senão pode não tocar em algumas Smart TVs.</span></div>
+            </div>
+            <div class="upload-list" id="uploadList-broadcast"></div>
+            <div id="broadcastVideoList" class="video-grid scrollable-grid" style="margin-bottom:12px;"></div>
+            <button class="btn btn-accent btn-pill" onclick="broadcastSelected()" id="broadcastBtn" disabled>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 8V6a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-6"></path><path d="M2 12a9 9 0 0 1 8 8"></path><path d="M2 16a5 5 0 0 1 4 4"></path><line x1="2" x2="2.01" y1="20" y2="20"></line></svg>Transmitir para todas as TVs
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div id="tvPanel" style="display:none; flex-direction:column; flex:1; overflow:hidden;">
+        <div class="content-header">
+          <div>
+            <div class="tv-detail-header">
+              <div class="tv-detail-icon">📺</div>
+              <div>
+                <div class="content-title" id="panelTvName">TV</div>
+                <div class="content-subtitle">
+                  Código: <code id="panelTvCode" style="font-family:monospace; color:var(--accent);"></code>
+                  &nbsp;·&nbsp;
+                  <span id="panelTvStatus"></span>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div style="display:flex; gap:8px; align-items:center;">
+            <button class="btn btn-ghost btn-sm" onclick="deselectTv()">← Voltar</button>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div id="nowPlayingBar" style="display:none;" class="now-playing">
+            <span>▶</span>
+            <div>
+              <div class="label" id="nowPlayingLabel">Reproduzindo agora</div>
+              <div class="filename" id="nowPlayingName"></div>
+            </div>
+          </div>
+
+          <div class="section-label">Controles</div>
+          <div class="controls-row" id="controlsRow">
+            <button class="btn btn-green" onclick="resumeTv()" id="btnResume" disabled>▶ Retomar</button>
+            <button class="btn btn-ghost" onclick="pauseTv()" id="btnPause" disabled>⏸ Pausar</button>
+            <button class="btn btn-red btn-sm" onclick="stopTv()" id="btnStop" disabled>⏹ Parar</button>
+            <button class="btn btn-ghost btn-sm" onclick="toggleFullscreen()" id="btnFullscreen" disabled title="Tela cheia na TV">⛶ Tela cheia</button>
+          </div>
+
+          <div class="divider"></div>
+
+          <div class="section-label" style="display:flex; align-items:center; justify-content:space-between;">
+            Vídeos disponíveis
+            <button class="refresh-btn" onclick="loadVideos()">↻ atualizar</button>
+          </div>
+
+          <div class="dropzone" id="dropzone-panel">
+            <input type="file" id="fileInput-panel" accept="video/mp4,.mp4,image/*,.jpg,.jpeg,.png,.webp" multiple style="display:none">
+            <svg class="dropzone-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242"></path><path d="M12 12v9"></path><path d="m16 16-4-4-4 4"></path></svg>
+            <div class="dropzone-text">Arraste vídeos aqui ou <span class="dropzone-link">clique para selecionar</span></div>
+            <div class="dropzone-hint">.mp4 · .jpg · .png · .webp</div>
+<div class="warning-box"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"></path><path d="M12 9v4"></path><path d="M12 17h.01"></path></svg><span>O vídeo NÃO é mais convertido automaticamente — envie já em .mp4 (H.264 + AAC), senão pode não tocar em algumas Smart TVs.</span></div>
+          </div>
+          <div class="upload-list" id="uploadList-panel"></div>
+
+          <div class="video-grid scrollable-grid" id="videoGrid">
+            <div style="color:var(--muted); font-size:12px; grid-column:1/-1;">Carregando vídeos...</div>
+          </div>
+
+          <div class="divider"></div>
+          <div class="section-label">Transmissão em massa</div>
+          <div class="broadcast-section">
+            <div class="broadcast-sub">Envie o vídeo selecionado acima para todas as TVs conectadas simultaneamente.</div>
+            <button class="btn btn-accent btn-pill" onclick="broadcastCurrent()" id="btnBroadcastAll">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 8V6a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-6"></path><path d="M2 12a9 9 0 0 1 8 8"></path><path d="M2 16a5 5 0 0 1 4 4"></path><line x1="2" x2="2.01" y1="20" y2="20"></line></svg>Transmitir para todas as TVs
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== PLAYLISTS (sempre visível, logo abaixo da área de mídia) ===== -->
+    <div id="panel-playlists" style="display:flex; flex-direction:column;">
+      <div class="playlist-manager">
+        <div class="playlist-header">
+          <div>
+            <div class="content-title">📋 Playlists</div>
+            <div class="content-subtitle">Crie e gerencie playlists em loop para suas TVs</div>
+          </div>
+          <button class="btn btn-accent" onclick="openNewPlaylist()">+ Nova Playlist</button>
+        </div>
+        <div class="playlist-body">
+          <!-- Coluna esquerda: lista de playlists -->
+          <div class="pl-list-col">
+            <div class="pl-list-col-header">
+              Minhas Playlists
+              <span class="tv-count" id="plCount">0</span>
+            </div>
+            <div class="pl-list" id="plList">
+              <div class="empty-tvs" style="padding:30px 16px;">
+                <div class="icon">📋</div>
+                <p>Nenhuma playlist.<br>Clique em <strong>+ Nova Playlist</strong> para criar.</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Coluna direita: edição / visualização -->
+          <div class="pl-edit-col">
+            <!-- Estado vazio -->
+            <div class="pl-empty-state" id="plEmptyState">
+              <img src="/assets/select-tv.png" class="no-selection-img" alt="">
+              <h3>Selecione uma playlist</h3>
+              <p>Escolha uma playlist à esquerda ou crie uma nova.</p>
+            </div>
+
+            <!-- Formulário de criação/edição -->
+            <div id="plForm" style="display:none; flex-direction:column; flex:1; overflow:hidden;">
+              <div style="padding:16px 24px; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; flex-shrink:0;">
+                <div class="content-title" id="plFormTitle">Nova Playlist</div>
+                <div style="display:flex; gap:8px;">
+                  <button class="btn btn-ghost btn-sm" onclick="cancelPlaylistEdit()">Cancelar</button>
+                  <button class="btn btn-accent btn-sm" onclick="savePlaylist()" id="plSaveBtn">Salvar</button>
+                </div>
+              </div>
+              <div class="pl-edit-inner">
+                <div class="form-row">
+                  <div class="form-label">Nome da Playlist *</div>
+                  <input type="text" class="form-input" id="plNameInput" placeholder="Ex: Promoções, Cardápio, Destaques..." maxlength="60">
+                  <div class="form-error" id="plNameError"></div>
+                </div>
+
+                <!-- Envio de mídia de dentro do próprio formulário: antes só
+                     dava para escolher entre arquivos já enviados em outro
+                     lugar, então montar uma playlist com conteúdo novo exigia
+                     sair daqui, subir o arquivo e voltar. O que for enviado
+                     aqui já entra na ordem de reprodução automaticamente. -->
+                <div class="form-row">
+                  <div class="form-label" style="margin-bottom:8px;">Enviar novos arquivos para esta playlist</div>
+                  <div class="dropzone" id="dropzone-playlist">
+                    <input type="file" id="fileInput-playlist" accept="video/mp4,.mp4,image/*,.jpg,.jpeg,.png,.webp" multiple style="display:none">
+                    <svg class="dropzone-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242"></path><path d="M12 12v9"></path><path d="m16 16-4-4-4 4"></path></svg>
+                    <div class="dropzone-text">Arraste vídeos aqui ou <span class="dropzone-link">clique para selecionar</span></div>
+                    <div class="dropzone-hint">.mp4 · .jpg · .png · .webp — entram direto na playlist</div>
+                    <div class="warning-box"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"></path><path d="M12 9v4"></path><path d="M12 17h.01"></path></svg><span>O vídeo NÃO é mais convertido automaticamente — envie já em .mp4 (H.264 + AAC), senão pode não tocar em algumas Smart TVs.</span></div>
+                  </div>
+                  <div class="upload-list" id="uploadList-playlist"></div>
+                </div>
+
+                <div class="form-row">
+                  <div class="form-label" style="margin-bottom:8px;">Vídeos disponíveis — clique para adicionar</div>
+                  <div class="pl-video-grid" id="plVideoGrid">
+                    <div style="color:var(--muted);font-size:12px;grid-column:1/-1;">Carregando vídeos...</div>
+                  </div>
+                </div>
+
+                <div class="divider"></div>
+
+                <div class="form-row">
+                  <div class="form-label" style="display:flex; align-items:center; justify-content:space-between; margin-bottom:10px;">
+                    <span>Ordem de reprodução</span>
+                    <span id="plOrderCount" style="font-size:11px; color:var(--muted); text-transform:none; letter-spacing:0;">0 vídeo(s)</span>
+                  </div>
+                  <div class="form-error" id="plVideosError"></div>
+                  <div id="plOrderList" class="pl-order-list"></div>
+                  <div id="plOrderEmpty" style="color:var(--muted); font-size:12px; padding:12px 0;">
+                    Nenhum vídeo adicionado. Clique nos vídeos acima para incluí-los.
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Visualização de playlist existente -->
+            <div id="plView" style="display:none; flex-direction:column; flex:1; overflow:hidden;">
+              <div style="padding:16px 24px; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; flex-shrink:0;">
+                <div>
+                  <div class="content-title" id="plViewName"></div>
+                  <div class="content-subtitle" id="plViewCount"></div>
+                </div>
+                <div style="display:flex; gap:8px;">
+                  <button class="btn btn-ghost btn-sm" onclick="editPlaylist()">✏️ Editar</button>
+                </div>
+              </div>
+              <div class="pl-edit-inner">
+                <div class="pl-info-badge">
+                  🔁 Esta playlist será reproduzida em loop contínuo na TV selecionada
+                </div>
+
+                <div class="section-label">Vídeos na ordem de reprodução</div>
+                <div id="plViewOrderList" class="pl-order-list" style="margin-bottom:20px;"></div>
+
+                <div class="divider"></div>
+
+                <div class="section-label">Enviar para TV</div>
+                <div class="pl-send-section">
+                  <div class="pl-send-title">Escolha a TV e inicie a playlist em loop</div>
+                  <div class="pl-send-row">
+                    <select class="pl-tv-select" id="plTvSelect">
+                      <option value="">— Selecione uma TV —</option>
+                    </select>
+                    <button class="btn btn-accent" onclick="sendPlaylistToTv()" id="plSendBtn" disabled>
+                      ▶ Iniciar Playlist
+                    </button>
+                  </div>
+                  <div style="margin-top:10px;">
+                    <button class="btn btn-ghost btn-sm" onclick="broadcastPlaylist()" id="plBroadcastBtn">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;flex-shrink:0;"><path d="M2 8V6a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-6"></path><path d="M2 12a9 9 0 0 1 8 8"></path><path d="M2 16a5 5 0 0 1 4 4"></path><line x1="2" x2="2.01" y1="20" y2="20"></line></svg>
+                      Enviar para todas as TVs
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </section>
+</main>
+
+<script src="/js/controller.js"></script>
+</body>
+</html>
