@@ -1,0 +1,14 @@
+{
+  "name": "visionloop",
+  "version": "0.1.4",
+  "description": "Controle de vídeos e imagens em loop para TVs via web",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "ws": "^8.21.0",
+    "@aws-sdk/client-s3": "^3.0.0",
+    "@aws-sdk/s3-request-presigner": "^3.0.0"
+  }
+}
