@@ -14,8 +14,8 @@
 //       DATABASE_URL="sua_connection_string_do_neon" node scripts/criar-conta-adm.js
 
 // ======================= PREENCHA AQUI =======================
-const NOME_NEGOCIO = ADM-2322; // ex: "Administração" — vai ser o que você digita no campo "Nome da empresa" da tela de login
-const SENHA = 10082026@;        // a senha que você vai usar pra logar (fica só neste arquivo, nunca é enviada a lugar nenhum)
+const NOME_NEGOCIO = "PREENCHA_AQUI"; // ex: "Administração" — vai ser o que você digita no campo "Nome da empresa" da tela de login
+const SENHA = "PREENCHA_AQUI";        // a senha que você vai usar pra logar (fica só neste arquivo, nunca é enviada a lugar nenhum)
 // ===============================================================
 
 const bcrypt = require("bcrypt");

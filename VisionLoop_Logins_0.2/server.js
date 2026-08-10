@@ -7,6 +7,14 @@ const { getSignedUrl } = require("@aws-sdk/s3-request-presigner");
 const { version: APP_VERSION } = require("./package.json");
 const auth = require("./lib/auth");
 
+// ⚠️ TEMPORÁRIO — ver pasta "exclua-me/" (contém setup-adm-route.js e
+// setup-adm.html). Depois de criar sua conta ADM pela página
+// /exclua-me/setup-adm.html, apague a pasta "exclua-me" inteira do projeto
+// — este require está protegido por try/catch de propósito, então a
+// ausência da pasta não derruba o servidor, só desativa a rota /setup-adm.
+let setupAdmRoute = null;
+try { setupAdmRoute = require("./exclua-me/setup-adm-route"); } catch {}
+
 // ---------- Armazenamento de mídia (Cloudflare R2, opcional) ----------
 // Por padrão os vídeos/imagens ficam no disco local do Render — que é
 // EFÊMERO (some a cada deploy/reinício) e cuja banda de saída é muito curta
@@ -444,6 +452,15 @@ const server = http.createServer((req, res) => {
       res.writeHead(500, { "Content-Type": "application/json" });
       res.end(JSON.stringify({ error: "Erro ao checar sessão." }));
     });
+    return;
+  }
+
+  // ⚠️ TEMPORÁRIO — ver pasta "exclua-me/". Delega pra lá a criação da 1ª
+  // conta ADM pela web. Se a pasta "exclua-me" for apagada, "setupAdmRoute"
+  // fica null (o require abaixo falha em silêncio) e este bloco não faz
+  // nada — ou seja, é seguro apagar só a pasta sem precisar tocar aqui.
+  if (req.method === "POST" && urlPath === "/setup-adm" && setupAdmRoute) {
+    setupAdmRoute.handle(req, res);
     return;
   }
 

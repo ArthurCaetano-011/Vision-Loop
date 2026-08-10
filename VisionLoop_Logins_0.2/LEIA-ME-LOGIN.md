@@ -56,7 +56,8 @@ login pra entrar.
 | `lib/db.js` | **Novo** — pool de conexão com o Postgres (Neon) |
 | `lib/auth.js` | **Novo** — autenticação, sessão, checagem de licença |
 | `schema-contas.sql` | **Novo** — script pra criar a tabela `contas` no Neon |
-| `scripts/criar-conta-adm.js` | **Novo** — uso único, cria a primeira conta ADM sem precisar escrever SQL na mão (preencha os espaços em branco no topo do arquivo e rode; pode apagar depois) |
+| `scripts/criar-conta-adm.js` | **Novo** — uso único, cria a primeira conta ADM rodando num terminal (Shell do Render ou Node local). Pode apagar depois. |
+| `exclua-me/` (pasta inteira) | **Novo** — alternativa ao script acima, pra quem não tem terminal disponível: cria a 1ª conta ADM por uma página no navegador. Ver seção própria abaixo. **Apague a pasta inteira depois de usar.** |
 
 Nenhum outro arquivo foi tocado — `tv.html`, `index.html`, o resto do
 `css/`, `playlists.json` etc. continuam exatamente como estavam no zip que
@@ -75,13 +76,18 @@ você mandou.
    arquivos da tabela acima, criando `lib/` e `login.html`).
 5. **Instalar dependências novas:** `npm install` dentro da pasta do
    projeto — baixa `pg` e `bcrypt` de verdade.
-6. **Criar sua conta ADM** — forma mais simples: edite
-   `scripts/criar-conta-adm.js` (preencha `NOME_NEGOCIO` e `SENHA` no topo do
-   arquivo) e rode `node scripts/criar-conta-adm.js` (pela aba Shell do
-   Render depois do deploy, ou local com `DATABASE_URL="..."` na frente do
-   comando). Pode apagar esse arquivo depois de confirmar o login. Se preferir
-   fazer na mão, o `INSERT` comentado no fim do `schema-contas.sql` faz a
-   mesma coisa.
+6. **Criar sua conta ADM** — três formas, escolha uma:
+   - **Pelo navegador (mais fácil se você não tem terminal disponível):**
+     depois do deploy, acesse `https://seu-site.onrender.com/exclua-me/setup-adm.html`,
+     preencha nome da empresa e senha. Só funciona uma vez, com o banco
+     vazio. **Apague a pasta `exclua-me/` inteira depois de usar** (e suba o
+     código de novo sem ela).
+   - **Por script, num terminal:** edite `scripts/criar-conta-adm.js`
+     (preencha `NOME_NEGOCIO` e `SENHA` no topo) e rode
+     `node scripts/criar-conta-adm.js` (pela aba Shell do Render, ou local
+     com `DATABASE_URL="..."` na frente do comando). Pode apagar o arquivo
+     depois.
+   - **Na mão:** o `INSERT` comentado no fim do `schema-contas.sql`.
 7. **Deploy:** `git add`, `git commit`, `git push` do jeito que você já faz,
    e redeploy no Render.
 
