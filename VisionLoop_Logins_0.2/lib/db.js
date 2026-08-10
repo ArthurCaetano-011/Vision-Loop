@@ -22,6 +22,16 @@ const pool = new Pool({
   // O Neon (e o Postgres do Render) exigem SSL; rejectUnauthorized: false
   // evita erro de certificado autoassinado sem desabilitar a criptografia.
   ssl: { rejectUnauthorized: false },
+
+  // ---- Timeouts (ver relatório de riscos de travamento, 2026-08-10) ----
+  // Sem isso, uma consulta que nunca volta (Neon lento/inacessível) prende a
+  // requisição HTTP ou o handshake do WebSocket pra sempre, sem erro nenhum
+  // pro usuário — é o pior cenário do relatório, e o mais barato de corrigir.
+  max: 10,                        // teto de conexões simultâneas no pool
+  idleTimeoutMillis: 30000,       // fecha conexão ociosa após 30s
+  connectionTimeoutMillis: 8000,  // desiste de conseguir uma conexão do pool após 8s
+  statement_timeout: 8000,        // o próprio Postgres mata a query após 8s (lado do servidor)
+  query_timeout: 8000,            // e o driver também desiste após 8s (lado do cliente, redundante de propósito)
 });
 
 pool.on("error", (err) => {

@@ -1,5 +1,43 @@
 # VisionLoop_Logins_0.2 — Login multi-usuário (Fase 1)
 
+## Atualização (mesma versão 0.2): robustez contra travamentos
+
+Depois de entregar esta 0.2, analisei os riscos de travamento que a Fase 1
+do login introduziu (a pedido seu — ver relatório separado) e apliquei 4
+correções nos bastidores, sem mudar nada visível pra quem usa o site:
+
+- **Timeout nas consultas ao banco:** se o Neon ficar lento ou inacessível
+  por um instante, uma tentativa de login (ou de abrir o controlador) agora
+  falha com uma mensagem de erro em até ~8 segundos, em vez de ficar
+  "pensando" pra sempre.
+- **Limite de tamanho nos corpos de requisição JSON** (`/login`,
+  `/playlists`, `/setup-adm`): uma requisição malformada ou anormalmente
+  grande é recusada na hora (erro 413), em vez de ficar acumulando na
+  memória do servidor sem limite.
+- **Heartbeat no WebSocket:** o servidor agora "cutuca" (ping) cada TV e
+  controlador conectado a cada 30 segundos e derruba quem não responder —
+  evita que uma TV que perdeu a rede de um jeito "sujo" (comum em Wi-Fi
+  instável) continue aparecendo como conectada no painel sem estar.
+- **`/storage-usage` (modo disco local) deixou de ser síncrono:** com
+  muitos vídeos salvos, calcular o espaço usado podia travar o processo
+  inteiro por um instante (inclusive as mensagens do WebSocket). Agora isso
+  roda em paralelo sem bloquear.
+- **Limite de tentativas de login por hora:** cada IP só pode tentar logar
+  (certo ou errado) 20 vezes por hora em `/login`. Depois disso, a rota
+  responde erro 429 ("Muitas tentativas de login...") até a janela de 1 hora
+  passar — dificulta um script tentando adivinhar senha por tentativa e
+  erro, sem atrapalhar uso normal (ninguém erra a senha 20 vezes numa hora).
+  É por IP, guardado só em memória (reinicia zerado a cada deploy, igual ao
+  resto do estado do servidor).
+
+Nada disso muda o comportamento normal do site — só como ele reage quando
+algo (rede, banco, requisição estranha, tentativa repetida de login) sai do
+esperado. Testei os cinco pontos localmente (login certo/errado, corpo
+grande sendo recusado, heartbeat entregando ping e a conexão continuando
+aberta normalmente, `/storage-usage` respondendo certo, e o bloqueio de
+login aparecendo exatamente na 21ª tentativa do mesmo IP) antes de
+reempacotar.
+
 ## ⚠️ Importante: base deste pacote
 
 Este pacote foi construído em cima do **VisionLoop 0.1.3** que você me enviou

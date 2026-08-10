@@ -233,6 +233,79 @@ function removeMediaFromPlaylists(name) {
 
 // ---------- Servidor HTTP ----------
 
+// Limite de tamanho para os corpos de requisição JSON pequenos (login,
+// playlists, setup-adm) — NÃO se aplica às rotas de upload de vídeo, que
+// continuam sem limite de propósito. Sem isso, uma requisição malformada ou
+// deliberadamente enorme nessas rotas ficava acumulando na memória do
+// processo sem nenhum teto (ver relatório de riscos de travamento,
+// 2026-08-10). 1MB é bem folgado para o maior corpo esperado aqui (uma
+// playlist com muitos itens).
+const MAX_JSON_BODY_BYTES = 1 * 1024 * 1024;
+
+function readJsonBody(req, res, onBody) {
+  let body = "";
+  let tooLarge = false;
+  req.on("data", (d) => {
+    if (tooLarge) return;
+    body += d;
+    if (Buffer.byteLength(body) > MAX_JSON_BODY_BYTES) {
+      tooLarge = true;
+      res.writeHead(413, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ error: "Requisição grande demais." }));
+      req.destroy();
+    }
+  });
+  req.on("end", () => {
+    if (tooLarge) return;
+    onBody(body);
+  });
+}
+
+// Limite de tentativas de login por IP (anti força-bruta). Guardado em
+// memória — não precisa sobreviver a um reinício do servidor, só precisa
+// desestimular um script tentando adivinhar senha por tentativa e erro em
+// /login, que é a única rota pública (sem sessão) que consulta senha. Não
+// afeta o uso normal: 20 tentativas por hora é bem mais do que qualquer
+// pessoa real erraria digitando.
+const LOGIN_RATE_LIMIT_MAX = 20;
+const LOGIN_RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000; // 1 hora
+const loginAttemptsByIp = new Map(); // ip -> [timestamps das tentativas na janela atual]
+
+// Atrás do proxy do Render, o IP real de quem acessa vem no header
+// "x-forwarded-for" (o proxy troca o IP de origem da conexão TCP pelo dele
+// próprio) — pode ter mais de um IP separado por vírgula quando há vários
+// proxies na frente; o primeiro é o do visitante. Sem proxy (ex.: teste
+// local), cai para o IP da conexão direta.
+function getClientIp(req) {
+  const fwd = req.headers["x-forwarded-for"];
+  if (fwd) return fwd.split(",")[0].trim();
+  return (req.socket && req.socket.remoteAddress) || "desconhecido";
+}
+
+function isLoginRateLimited(ip) {
+  const now = Date.now();
+  const attempts = (loginAttemptsByIp.get(ip) || []).filter((t) => now - t < LOGIN_RATE_LIMIT_WINDOW_MS);
+  loginAttemptsByIp.set(ip, attempts);
+  return attempts.length >= LOGIN_RATE_LIMIT_MAX;
+}
+
+function registerLoginAttempt(ip) {
+  const attempts = loginAttemptsByIp.get(ip) || [];
+  attempts.push(Date.now());
+  loginAttemptsByIp.set(ip, attempts);
+}
+
+// Limpeza periódica pra não deixar esse Map crescendo pra sempre com IPs
+// que já pararam de tentar logar há muito tempo.
+setInterval(() => {
+  const now = Date.now();
+  for (const [ip, attempts] of loginAttemptsByIp.entries()) {
+    const fresh = attempts.filter((t) => now - t < LOGIN_RATE_LIMIT_WINDOW_MS);
+    if (fresh.length === 0) loginAttemptsByIp.delete(ip);
+    else loginAttemptsByIp.set(ip, fresh);
+  }
+}, 10 * 60 * 1000);
+
 const server = http.createServer((req, res) => {
   const rawPath = req.url.split("?")[0];
   let decodedPath;
@@ -379,9 +452,13 @@ const server = http.createServer((req, res) => {
   // (Fase 2). Ver lib/auth.js para as regras de senha/sessão/licença.
 
   if (req.method === "POST" && urlPath === "/login") {
-    let body = "";
-    req.on("data", (d) => { body += d; });
-    req.on("end", async () => {
+    const clientIp = getClientIp(req);
+    if (isLoginRateLimited(clientIp)) {
+      res.writeHead(429, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ error: "Muitas tentativas de login. Aguarde um pouco antes de tentar de novo." }));
+      return;
+    }
+    readJsonBody(req, res, async (body) => {
       let parsed;
       try {
         parsed = JSON.parse(body);
@@ -390,6 +467,10 @@ const server = http.createServer((req, res) => {
         res.end(JSON.stringify({ error: "JSON inválido." }));
         return;
       }
+      // Conta a tentativa antes de checar a senha — certa ou errada, ambas
+      // contam pro limite (é o próprio "tentar adivinhar a senha" que se
+      // quer desestimular).
+      registerLoginAttempt(clientIp);
       try {
         const resultado = await auth.autenticar(parsed.nomeNegocio, parsed.senha);
         if (resultado.erro) {
@@ -486,14 +567,22 @@ const server = http.createServer((req, res) => {
         });
       return;
     }
+    // Versão assíncrona (era fs.readdirSync + fs.statSync num loop síncrono)
+    // — numa pasta de vídeos grande, o statSync um por um bloqueava o
+    // processo inteiro (inclusive mensagens do WebSocket de TVs/controladores
+    // esperando resposta) pela duração da listagem inteira. fs.promises +
+    // Promise.all faz os stats em paralelo sem travar o event loop (ver
+    // relatório de riscos de travamento, 2026-08-10).
     const dir = path.join(__dirname, "videos");
-    let total = 0;
-    try {
-      total = fs.readdirSync(dir)
-        .filter((f) => !f.startsWith(".") && MEDIA_EXT_REGEX.test(f))
-        .reduce((sum, f) => sum + fs.statSync(path.join(dir, f)).size, 0);
-    } catch {}
-    respond(total);
+    fs.promises.readdir(dir)
+      .then((allFiles) => {
+        const files = allFiles.filter((f) => !f.startsWith(".") && MEDIA_EXT_REGEX.test(f));
+        return Promise.all(
+          files.map((f) => fs.promises.stat(path.join(dir, f)).then((s) => s.size).catch(() => 0))
+        );
+      })
+      .then((sizes) => respond(sizes.reduce((sum, size) => sum + size, 0)))
+      .catch(() => respond(0));
     return;
   }
 
@@ -530,9 +619,7 @@ const server = http.createServer((req, res) => {
   }
 
   if (urlPath === "/playlists" && req.method === "POST") {
-    let body = "";
-    req.on("data", d => body += d);
-    req.on("end", () => {
+    readJsonBody(req, res, (body) => {
       try {
         const playlist = JSON.parse(body);
         if (!playlist.name || !playlist.name.trim()) {
@@ -839,6 +926,15 @@ wss.on("connection", (ws, req) => {
   // afeta o fluxo delas.
   const cookiesDoHandshake = auth.parseCookies(req);
 
+  // Heartbeat (ver relatório de riscos de travamento, 2026-08-10): marca a
+  // conexão como "viva" agora, e de novo a cada "pong" que ela responder. O
+  // ws.ping()/terminate() periódico logo abaixo usa essa flag pra descobrir
+  // TVs/controladores "zumbis" — conexões que a rede deixou pra trás sem
+  // fechar de forma limpa (comum em Wi-Fi instável) — e derrubá-las, em vez
+  // de deixá-las paradas na lista enganando quem está controlando.
+  ws.isAlive = true;
+  ws.on("pong", () => { ws.isAlive = true; });
+
   ws.on("message", (raw) => {
     let msg;
     try { msg = JSON.parse(raw); } catch { return; }
@@ -980,6 +1076,25 @@ wss.on("connection", (ws, req) => {
     if (ws._tvCode) { tvs.delete(ws._tvCode); broadcastTvList(); }
   });
 });
+
+// A cada 30s, cutuca (ping) toda conexão aberta. Quem não respondeu ao
+// ping anterior (ws.isAlive ainda false) é considerado zumbi e derrubado
+// com terminate() — isso dispara o "close" normal dela lá em cima, que já
+// limpa `tvs`/`controllers` e avisa quem precisa saber. Quem respondeu tem
+// a flag resetada pra false até o próximo ciclo confirmar de novo.
+const HEARTBEAT_INTERVAL_MS = 30000;
+const heartbeatInterval = setInterval(() => {
+  wss.clients.forEach((ws) => {
+    if (ws.isAlive === false) {
+      ws.terminate();
+      return;
+    }
+    ws.isAlive = false;
+    ws.ping();
+  });
+}, HEARTBEAT_INTERVAL_MS);
+
+wss.on("close", () => clearInterval(heartbeatInterval));
 
 const videosDir = path.join(__dirname, "videos");
 if (!fs.existsSync(videosDir)) fs.mkdirSync(videosDir);
