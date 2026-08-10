@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VisionLoop — Configuração inicial</title>
+<link rel="icon" href="/assets/LogoSemFundo.png" type="image/png">
+<link rel="stylesheet" href="/css/controller.css">
+<style>
+  body {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    background: var(--bg);
+  }
+  .setup-card {
+    width: 100%;
+    max-width: 420px;
+    margin: 20px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-soft);
+    padding: 32px 28px;
+  }
+  .setup-logo {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    margin-bottom: 12px;
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--text);
+  }
+  .setup-logo img { width: 32px; height: 32px; object-fit: contain; }
+  .setup-subtitle {
+    text-align: center;
+    color: var(--muted);
+    font-size: 13px;
+    margin-bottom: 24px;
+    line-height: 1.5;
+  }
+  .setup-field { margin-bottom: 16px; }
+  .setup-field label {
+    display: block;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--muted);
+    margin-bottom: 6px;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+  }
+  .setup-field input {
+    width: 100%;
+    padding: 11px 12px;
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    background: var(--surface2);
+    color: var(--text);
+    font-size: 14px;
+    outline: none;
+  }
+  .setup-field input:focus { border-color: var(--accent); }
+  .setup-error {
+    display: none;
+    background: color-mix(in srgb, var(--red) 12%, transparent);
+    border: 1px solid color-mix(in srgb, var(--red) 35%, transparent);
+    color: var(--red);
+    font-size: 13px;
+    padding: 10px 12px;
+    border-radius: var(--radius);
+    margin-bottom: 16px;
+  }
+  .setup-success {
+    display: none;
+    background: color-mix(in srgb, var(--green) 12%, transparent);
+    border: 1px solid color-mix(in srgb, var(--green) 35%, transparent);
+    color: var(--green);
+    font-size: 13px;
+    padding: 14px;
+    border-radius: var(--radius);
+    line-height: 1.6;
+  }
+  .setup-btn {
+    width: 100%;
+    padding: 12px;
+    border: none;
+    border-radius: var(--radius);
+    background: var(--accent);
+    color: #fff;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .setup-btn:disabled { opacity: 0.6; cursor: default; }
+  .setup-btn:not(:disabled):hover { box-shadow: var(--shadow-glow); }
+</style>
+</head>
+<body>
+
+<div class="setup-card">
+  <div class="setup-logo">
+    <img src="/assets/LogoSemFundo.png" alt="VisionLoop">
+    VisionLoop
+  </div>
+  <div class="setup-subtitle">
+    Configuração inicial — cria a primeira conta ADM. Só funciona uma vez,
+    enquanto não existir nenhuma conta cadastrada.
+  </div>
+
+  <div class="setup-error" id="setupError"></div>
+  <div class="setup-success" id="setupSuccess"></div>
+
+  <form id="setupForm" autocomplete="off">
+    <div class="setup-field">
+      <label for="nomeNegocio">Nome da empresa</label>
+      <input type="text" id="nomeNegocio" name="nomeNegocio" autocomplete="off" required>
+    </div>
+
+    <div class="setup-field">
+      <label for="senha">Senha</label>
+      <input type="password" id="senha" name="senha" autocomplete="new-password" required minlength="6">
+    </div>
+
+    <div class="setup-field">
+      <label for="senhaConfirma">Confirmar senha</label>
+      <input type="password" id="senhaConfirma" name="senhaConfirma" autocomplete="new-password" required minlength="6">
+    </div>
+
+    <button type="submit" class="setup-btn" id="setupBtn">Criar conta ADM</button>
+  </form>
+</div>
+
+<script>
+  if (localStorage.getItem('vl_theme') === 'dark') {
+    document.body.classList.add('dark');
+  }
+
+  const form = document.getElementById('setupForm');
+  const errorBox = document.getElementById('setupError');
+  const successBox = document.getElementById('setupSuccess');
+  const btn = document.getElementById('setupBtn');
+
+  form.addEventListener('submit', (e) => {
+    e.preventDefault();
+    errorBox.style.display = 'none';
+
+    const senha = document.getElementById('senha').value;
+    const senhaConfirma = document.getElementById('senhaConfirma').value;
+    if (senha !== senhaConfirma) {
+      errorBox.textContent = 'As senhas digitadas são diferentes.';
+      errorBox.style.display = 'block';
+      return;
+    }
+
+    btn.disabled = true;
+    btn.textContent = 'Criando...';
+
+    fetch('/setup-adm', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        nomeNegocio: document.getElementById('nomeNegocio').value,
+        senha,
+      }),
+    })
+      .then(async (r) => {
+        const data = await r.json().catch(() => ({}));
+        if (!r.ok) throw new Error(data.error || 'Não foi possível criar a conta.');
+        form.style.display = 'none';
+        successBox.innerHTML =
+          '✅ Conta ADM criada: <strong>' + data.nomeNegocio + '</strong>.<br><br>' +
+          'Agora vá para <a href="/login.html">a tela de login</a> e entre com esse nome ' +
+          'e a senha que você definiu.<br><br>' +
+          '⚠️ Por segurança, apague a pasta <strong>exclua-me/</strong> inteira do projeto ' +
+          'agora que ela já foi usada, e suba o código de novo sem ela.';
+        successBox.style.display = 'block';
+      })
+      .catch((err) => {
+        errorBox.textContent = err.message || 'Não foi possível criar a conta. Tente de novo.';
+        errorBox.style.display = 'block';
+        btn.disabled = false;
+        btn.textContent = 'Criar conta ADM';
+      });
+  });
+</script>
+
+</body>
+</html>
