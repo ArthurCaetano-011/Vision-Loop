@@ -15,7 +15,7 @@
 
 // ======================= PREENCHA AQUI =======================
 const NOME_NEGOCIO = ADM-2322; // ex: "Administração" — vai ser o que você digita no campo "Nome da empresa" da tela de login
-const SENHA = 10082026Ç;        // a senha que você vai usar pra logar (fica só neste arquivo, nunca é enviada a lugar nenhum)
+const SENHA = 10082026@;        // a senha que você vai usar pra logar (fica só neste arquivo, nunca é enviada a lugar nenhum)
 // ===============================================================
 
 const bcrypt = require("bcrypt");
