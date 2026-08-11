@@ -1,4 +1,41 @@
-# VisionLoop_Logins_0.6 — Limite de armazenamento por conta + limpeza de arquivos
+# VisionLoop_Logins_0.6 — Limite de armazenamento por conta, limpeza de arquivos e correção do bug de exclusão de playlist
+
+## Correção de bug reportado: excluir playlist não fechava o painel dela
+
+Você reportou: ao excluir uma playlist enquanto estava com o painel dela
+aberto (visualizando ou editando os vídeos), o painel continuava na tela
+mesmo depois da exclusão — em vez de fechar/voltar pro estado vazio, como já
+acontecia em outros casos.
+
+**Causa:** um problema de tipo em JavaScript, não de lógica. O id de cada
+playlist chega de dois jeitos diferentes no painel:
+
+- Como **texto** (`"3"`), quando vem de um clique num botão da lista (o
+  `onclick` do HTML sempre vira string).
+- Como **número** (`3`), quando vem direto da resposta da API logo depois de
+  criar ou editar uma playlist (o id é uma coluna numérica no Postgres).
+
+O código guardava "qual playlist está selecionada" numa variável só, e
+comparava esse valor com `===` (comparação estrita, que também compara o
+tipo). Assim que você criava ou salvava uma playlist, essa variável passava
+a guardar um **número**; se em seguida você excluía aquela mesma playlist
+pelo botão × da lista (que manda um **texto**), a comparação `3 === "3"`
+dava **falso** — o código concluía (errado) que a playlist excluída não era
+a que estava com o painel aberto, e por isso não fechava nada. Fora do
+cenário de "criar/editar e já excluir em seguida", os dois lados por
+coincidência tendiam a ser sempre texto, por isso o problema não aparecia em
+todo teste.
+
+**Correção:** os quatro pontos do código que faziam essa comparação ou
+guardavam esse id (`js/controller.js`) agora sempre convertem pra texto
+antes de comparar ou guardar, então o tipo nunca mais pode divergir. De
+brinde, corrigi também um efeito colateral do mesmo bug que você não tinha
+mencionado: o destaque visual (cartão da playlist selecionada, com borda
+diferente na lista) também podia falhar em ficar marcado certo pelo mesmo
+motivo — agora fica consistente.
+
+**Nenhuma migração de banco, rota nova ou mudança de comportamento** além
+dessa correção — só o front-end (`js/controller.js`).
 
 ## Novidade da 0.6: limite de armazenamento por conta, agora valendo de verdade
 
@@ -276,6 +313,7 @@ excluir a própria conta logada nem trocar o próprio papel por essa tela
 
 | Arquivo | Situação |
 |---|---|
+| `js/controller.js` | Corrigido (0.6) — comparação de id de playlist (`selectedPlaylistId`) sempre convertida pra texto antes de comparar/guardar, corrigindo o painel que ficava aberto após excluir uma playlist recém criada/editada |
 | `server.js` | Alterado — `getSizesMap()` novo (lista tamanho de tudo que está no armazenamento, R2 ou disco local, num só lugar); `wouldExceedStorageCap()` agora checa o limite DA CONTA além do global; `/storage-usage` passou a exigir login e responde o uso certo pra cada papel (0.6) |
 | `server.js` | Removido (0.6) — a rota `POST /setup-adm` e o `require` condicional de `./exclua-me/setup-adm-route` (a pasta que ela dependia foi retirada do pacote, ver abaixo) |
 | `exclua-me/` (pasta inteira) | **Removido (0.6)** — bootstrap da 1ª conta ADM pelo navegador, só funcionava com banco vazio; sem uso desde que sua conta ADM foi criada |
@@ -305,11 +343,11 @@ brevidade; o histórico completo continua no `CHANGELOG.md`.)
 1. **Rode a migração, se ainda não rodou:** `schema-migracao-0.5.sql` no SQL
    Editor do Neon (ver seção "⚠️ Antes de colocar no ar" acima) — só é
    necessário se você ainda não tinha rodado ela antes do deploy da 0.5. A
-   0.6 em si não precisa de nenhuma migração nova. Instalação nova do zero
-   (banco vazio, sem contas ainda): use `schema-contas.sql` em vez disso —
-   já inclui tudo (contas, tvs, playlists, midia) de uma vez.
+   0.6 não precisa de nenhuma migração nova. Instalação nova do zero (banco
+   vazio, sem contas ainda): use `schema-contas.sql` em vez disso — já inclui
+   tudo (contas, tvs, playlists, midia) de uma vez.
 2. **Copiar este projeto** pro seu repositório local, **substituindo a pasta
-   inteira** (não só colando por cima) — a 0.6 remove arquivos que a 0.5
+   inteira** (não só colando por cima) — a 0.6 removeu arquivos que a 0.5
    tinha (`exclua-me/`, `scripts/`, `schema-migracao-0.4.sql`); só copiar os
    alterados por cima deixaria esses arquivos removidos ainda no seu
    repositório.
@@ -322,7 +360,20 @@ brevidade; o histórico completo continua no `CHANGELOG.md`.)
 
 ## Como testei esta versão (0.6)
 
-Rodei localmente com um banco e um bucket R2 simulados (sem acesso ao seu
+**Bug da exclusão de playlist:** reproduzi o bug reportado rodando o
+servidor localmente com um banco simulado (sem acesso ao seu Neon de
+verdade deste ambiente): logei, criei uma playlist nova (o que já deixava
+`selectedPlaylistId` como número, a causa raiz), abri o painel dela e chamei
+a exclusão pelo mesmo fluxo do botão × — confirmei que, no código de antes,
+a comparação de tipos realmente falhava (`3 === "3"` dá falso), e que com a
+correção aplicada (`String(...)` dos dois lados) a mesma sequência agora
+fecha o painel corretamente. Também conferi os outros três pontos que
+guardavam/comparavam esse id (seleção pela lista, destaque visual do cartão
+selecionado, exclusão vinda de um id só-texto sem nunca ter criado/editado
+antes) — nenhum regrediu.
+
+**Limite de armazenamento por conta:** rodei localmente com um banco e um
+bucket R2 simulados (sem acesso ao seu
 Neon/Cloudflare de verdade deste ambiente), cobrindo o teto por conta nos
 dois modos de armazenamento:
 

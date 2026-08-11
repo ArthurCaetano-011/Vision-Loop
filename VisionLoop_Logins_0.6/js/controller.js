@@ -597,7 +597,7 @@ function renderPlList() {
     return;
   }
   list.innerHTML = Object.values(playlists).map(pl => `
-    <div class="pl-card ${selectedPlaylistId === pl.id ? 'selected' : ''}" onclick="selectPlaylist('${pl.id}')">
+    <div class="pl-card ${String(selectedPlaylistId) === String(pl.id) ? 'selected' : ''}" onclick="selectPlaylist('${pl.id}')">
       <div class="pl-card-icon">📋</div>
       <div class="pl-card-info">
         <div class="pl-card-name">${pl.name}</div>
@@ -609,7 +609,7 @@ function renderPlList() {
 }
 
 function selectPlaylist(id) {
-  selectedPlaylistId = id;
+  selectedPlaylistId = String(id);
   editingPlaylistId = null;
   renderPlList();
   showPlView(playlists[id]);
@@ -691,8 +691,15 @@ function deletePlaylist(id) {
   fetch('/playlists/' + id, { method: 'DELETE' })
     .then(() => {
       delete playlists[id];
-      if (selectedPlaylistId === id) {
+      // Comparação por String(): selectedPlaylistId às vezes vem de um
+      // clique (string, via atributo onclick) e às vezes vem direto da
+      // resposta da API depois de salvar (number, id do Postgres) — usar
+      // "===" direto deixava esse fechamento de painel dependendo de sorte
+      // de tipo, e o painel ficava aberto "por engano" com uma playlist já
+      // excluída.
+      if (String(selectedPlaylistId) === String(id)) {
         selectedPlaylistId = null;
+        editingPlaylistId = null;
         document.getElementById('plEmptyState').style.display = 'flex';
         document.getElementById('plForm').style.display = 'none';
         document.getElementById('plView').style.display = 'none';
@@ -904,7 +911,10 @@ function savePlaylist() {
     .then(saved => {
       if (saved.error) { alert(saved.error); return; }
       playlists[saved.id] = saved;
-      selectedPlaylistId = saved.id;
+      // saved.id vem da API como number (id do Postgres); selectedPlaylistId
+      // precisa ficar sempre como string, senão a comparação "===" em outros
+      // pontos (ex.: exclusão) falha silenciosamente por tipo diferente.
+      selectedPlaylistId = String(saved.id);
       editingPlaylistId = null;
       plSelectedVideos = [];
       renderPlList();
