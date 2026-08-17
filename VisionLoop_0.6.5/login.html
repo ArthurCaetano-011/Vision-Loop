@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VisionLoop — Entrar</title>
+<link rel="icon" href="/assets/LogoSemFundo.png" type="image/png">
+<link rel="stylesheet" href="/css/controller.css">
+<style>
+  body {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    background: var(--bg);
+  }
+  .login-card {
+    width: 100%;
+    max-width: 380px;
+    margin: 20px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-soft);
+    padding: 32px 28px;
+  }
+  .login-logo {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    margin-bottom: 24px;
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--text);
+  }
+  .login-logo img { width: 32px; height: 32px; object-fit: contain; }
+  .login-field { margin-bottom: 16px; }
+  .login-field label {
+    display: block;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--muted);
+    margin-bottom: 6px;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+  }
+  .login-field input {
+    width: 100%;
+    padding: 11px 12px;
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    background: var(--surface2);
+    color: var(--text);
+    font-size: 14px;
+    outline: none;
+  }
+  .login-field input:focus { border-color: var(--accent); }
+  .login-field-pw-wrap { position: relative; }
+  .login-field-pw-wrap input { padding-right: 40px; }
+  .pw-toggle-btn {
+    position: absolute;
+    right: 6px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    border: none;
+    color: var(--muted);
+    cursor: pointer;
+    padding: 0;
+  }
+  .pw-toggle-btn:hover { color: var(--text); }
+  .pw-toggle-btn svg { width: 18px; height: 18px; }
+  .login-error {
+    display: none;
+    background: color-mix(in srgb, var(--red) 12%, transparent);
+    border: 1px solid color-mix(in srgb, var(--red) 35%, transparent);
+    color: var(--red);
+    font-size: 13px;
+    padding: 10px 12px;
+    border-radius: var(--radius);
+    margin-bottom: 16px;
+  }
+  .login-btn {
+    width: 100%;
+    padding: 12px;
+    border: none;
+    border-radius: var(--radius);
+    background: var(--accent);
+    color: #fff;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .login-btn:disabled { opacity: 0.6; cursor: default; }
+  .login-btn:not(:disabled):hover { box-shadow: var(--shadow-glow); }
+  .login-back-wrap {
+    width: 100%;
+    max-width: 380px;
+    margin: 20px 20px 0;
+    display: flex;
+  }
+</style>
+</head>
+<body>
+
+<div class="login-back-wrap">
+  <button type="button" class="back-btn" onclick="goBack()">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 19-7-7 7-7"></path><path d="M19 12H5"></path></svg>
+    Voltar
+  </button>
+</div>
+
+<form class="login-card" id="loginForm" autocomplete="on">
+  <div class="login-logo">
+    <img src="/assets/LogoSemFundo.png" alt="VisionLoop">
+    VisionLoop
+  </div>
+
+  <div class="login-error" id="loginError"></div>
+
+  <div class="login-field">
+    <label for="nomeNegocio">Nome da empresa</label>
+    <input type="text" id="nomeNegocio" name="nomeNegocio" autocomplete="organization" required>
+  </div>
+
+  <div class="login-field">
+    <label for="senha">Senha</label>
+    <div class="login-field-pw-wrap">
+      <input type="password" id="senha" name="senha" autocomplete="current-password" required>
+      <button type="button" class="pw-toggle-btn" id="senhaToggleBtn" onclick="toggleSenhaVisivel()" aria-label="Mostrar senha" title="Mostrar senha">
+        <svg id="senhaToggleIconOpen" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8Z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+        <svg id="senhaToggleIconClosed" style="display:none;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"></path><path d="M10.73 5.08A10.94 10.94 0 0 1 12 5c7 0 11 8 11 8a17.7 17.7 0 0 1-3.09 4.32M6.61 6.61A17.9 17.9 0 0 0 1 13s4 8 11 8a10.9 10.9 0 0 0 5.39-1.61"></path><path d="M2 2l20 20"></path></svg>
+      </button>
+    </div>
+  </div>
+
+  <button type="submit" class="login-btn" id="loginBtn">Entrar</button>
+</form>
+
+<script>
+  // Mesma chave de tema usada nas outras páginas, só pra a tela de login
+  // não "piscar" clara se o resto do app estiver no escuro.
+  if (localStorage.getItem('vl_theme') === 'dark') {
+    document.body.classList.add('dark');
+  }
+
+  // Mesma lógica do botão "Voltar" do controller.html: se esta página está
+  // rodando dentro do iframe do launcher (index.html), fecha o app por lá;
+  // se foi aberta direto, manda pra raiz.
+  function goBack() {
+    if (window.parent && window.parent !== window && typeof window.parent.closeApp === 'function') {
+      window.parent.closeApp();
+    } else {
+      window.location.href = '/';
+    }
+  }
+
+  // Alterna o campo de senha entre oculto/visível — só o texto exibido
+  // muda; o valor mandado pro servidor é sempre o mesmo, JS aqui só troca
+  // o "type" do input entre "password" e "text".
+  function toggleSenhaVisivel() {
+    const input = document.getElementById('senha');
+    const iconOpen = document.getElementById('senhaToggleIconOpen');
+    const iconClosed = document.getElementById('senhaToggleIconClosed');
+    const btn = document.getElementById('senhaToggleBtn');
+    const mostrando = input.type === 'text';
+    input.type = mostrando ? 'password' : 'text';
+    iconOpen.style.display = mostrando ? '' : 'none';
+    iconClosed.style.display = mostrando ? 'none' : '';
+    const label = mostrando ? 'Mostrar senha' : 'Ocultar senha';
+    btn.setAttribute('aria-label', label);
+    btn.title = label;
+  }
+
+  const form = document.getElementById('loginForm');
+  const errorBox = document.getElementById('loginError');
+  const btn = document.getElementById('loginBtn');
+
+  // Se o usuário já tem uma sessão válida (ex.: voltou pra /login.html sem
+  // precisar), manda direto pro controlador em vez de pedir login de novo.
+  fetch('/me').then((r) => {
+    if (r.ok) window.location.href = '/controller.html';
+  }).catch(() => {});
+
+  form.addEventListener('submit', (e) => {
+    e.preventDefault();
+    errorBox.style.display = 'none';
+    btn.disabled = true;
+    btn.textContent = 'Entrando...';
+
+    fetch('/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        nomeNegocio: document.getElementById('nomeNegocio').value,
+        senha: document.getElementById('senha').value,
+      }),
+    })
+      .then(async (r) => {
+        const data = await r.json().catch(() => ({}));
+        if (!r.ok) throw new Error(data.error || 'Não foi possível entrar.');
+        window.location.href = '/controller.html';
+      })
+      .catch((err) => {
+        errorBox.textContent = err.message || 'Não foi possível entrar. Tente de novo.';
+        errorBox.style.display = 'block';
+        btn.disabled = false;
+        btn.textContent = 'Entrar';
+      });
+  });
+</script>
+
+</body>
+</html>
