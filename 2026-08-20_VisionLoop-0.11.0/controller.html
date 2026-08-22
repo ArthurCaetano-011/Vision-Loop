@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VisionLoop — Controlador</title>
+<link rel="icon" href="/assets/LogoSemFundo.png" type="image/png">
+<link rel="stylesheet" href="/css/controller.css">
+</head>
+<body>
+
+<header>
+  <div style="display:flex; align-items:center; gap:14px;">
+    <button class="back-btn" onclick="goBack()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 19-7-7 7-7"></path><path d="M19 12H5"></path></svg>
+      Voltar
+    </button>
+    <div class="logo">
+      <div class="logo-icon"><img src="/assets/LogoSemFundo.png" alt="VisionLoop"></div>
+      VisionLoop
+      <span id="appVersion" style="font-size:10px; font-weight:400; color:var(--muted); margin-left:2px;"></span>
+    </div>
+  </div>
+  <div style="display:flex; align-items:center; gap:16px;">
+    <div id="storageUsage" style="font-size:12px; color:var(--muted); display:none; align-items:center; gap:5px;">
+      💾 <span id="storageUsageValue"></span>
+    </div>
+    <div class="status-bar">
+      <span class="status-dot" id="statusDot"></span>
+      <span id="statusText">Conectando...</span>
+    </div>
+    <div id="accountChip" style="font-size:12px; color:var(--muted); display:none; align-items:center; gap:8px;">
+      <span id="accountChipName"></span>
+      <button id="logoutBtn" onclick="logout()" class="btn btn-ghost btn-sm" style="padding:4px 10px;">Sair</button>
+    </div>
+    <button id="themeToggle" onclick="toggleTheme()" aria-label="Alternar tema">
+      <svg id="iconMoon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"></path></svg>
+      <svg id="iconSun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"></path></svg>
+    </button>
+  </div>
+</header>
+
+<main>
+  <div class="tv-panel-wrap">
+    <button class="tv-panel-bar" id="tvPanelBar" onclick="toggleTvPanel()">
+      <div class="tv-panel-bar-left">
+        <svg class="tv-panel-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="15" x="2" y="7" rx="2"></rect><polyline points="17 2 12 7 7 2"></polyline></svg>
+        <span>TVs pareadas</span>
+        <span class="tv-count" id="tvCount">0</span>
+      </div>
+      <svg class="tv-panel-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"></path></svg>
+    </button>
+    <div class="tv-panel-dropdown" id="tvPanelDropdown">
+      <!-- Parear TV (Fase 3): a TV nova mostra um código de 6 caracteres na
+           própria tela — digite ele aqui pra vincular aquela TV à conta
+           logada agora. Sem isso, a TV fica esperando pra sempre, invisível
+           pra qualquer painel. -->
+      <div class="pair-tv-box">
+        <input type="text" id="pairCodeInput" placeholder="Código da TV (ex: AB12CD)" maxlength="6" autocapitalize="characters" autocomplete="off">
+        <button class="btn btn-accent btn-sm" onclick="parearTv()" id="pairTvBtn">Parear TV</button>
+      </div>
+      <div class="form-error" id="pairTvError" style="padding:0 10px;"></div>
+      <div class="tv-list" id="tvList">
+        <div class="empty-tvs">
+          <img src="/assets/empty-tv.png" class="empty-tvs-img" alt="">
+          <p>Nenhuma TV pareada ainda.<br>Abra o site na TV, escolha <strong>TV</strong>, e digite o código que aparecer lá no campo acima.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <section class="content">
+
+    <!-- Tabs -->
+    <div class="tabs">
+      <button class="tab-btn active" id="tab-playlists" onclick="switchTab('playlists')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 12H3"></path><path d="M16 6H3"></path><path d="M12 18H3"></path><path d="m16 12 5 3-5 3v-6Z"></path></svg>
+        Playlists
+      </button>
+      <!-- Só aparece pra contas ADM — checkSessionAndInit() em controller.js
+           mostra este botão depois de confirmar o papel logado em /me. O
+           servidor também exige role='adm' em cada rota /admin/contas/*,
+           então esconder o botão aqui é só conveniência de interface, não a
+           proteção de verdade. -->
+      <button class="tab-btn" id="tab-contas" onclick="switchTab('contas')" style="display:none;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M22 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+        Contas
+      </button>
+    </div>
+
+    <!-- ===== TAB PLAYLISTS ===== -->
+    <div id="panel-playlists" style="display:flex; flex-direction:column; flex:1; overflow:hidden;">
+      <div class="playlist-manager">
+        <div class="playlist-header">
+          <div>
+            <div class="content-title">📋 Playlists</div>
+            <div class="content-subtitle">Crie e gerencie playlists em loop para suas TVs</div>
+          </div>
+          <button class="btn btn-accent" onclick="openNewPlaylist()">+ Nova Playlist</button>
+        </div>
+        <div class="playlist-body">
+          <!-- Coluna esquerda: lista de playlists -->
+          <div class="pl-list-col">
+            <div class="pl-list-col-header">
+              Minhas Playlists
+              <span class="tv-count" id="plCount">0</span>
+            </div>
+            <div class="pl-list" id="plList">
+              <div class="empty-tvs" style="padding:30px 16px;">
+                <div class="icon">📋</div>
+                <p>Nenhuma playlist.<br>Clique em <strong>+ Nova Playlist</strong> para criar.</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Coluna direita: edição / visualização -->
+          <div class="pl-edit-col">
+            <!-- Estado vazio -->
+            <div class="pl-empty-state" id="plEmptyState">
+              <img src="/assets/select-tv.png" class="no-selection-img" alt="">
+              <h3>Selecione uma playlist</h3>
+              <p>Escolha uma playlist à esquerda ou crie uma nova.</p>
+            </div>
+
+            <!-- Formulário de criação/edição -->
+            <div id="plForm" style="display:none; flex-direction:column; flex:1; overflow:hidden;">
+              <div style="padding:16px 24px; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; flex-shrink:0;">
+                <div class="content-title" id="plFormTitle">Nova Playlist</div>
+                <div style="display:flex; gap:8px;">
+                  <button class="btn btn-ghost btn-sm" onclick="cancelPlaylistEdit()">Cancelar</button>
+                  <button class="btn btn-accent btn-sm" onclick="savePlaylist()" id="plSaveBtn">Salvar</button>
+                </div>
+              </div>
+              <div class="pl-edit-inner">
+                <div class="form-row">
+                  <div class="form-label">Nome da Playlist *</div>
+                  <input type="text" class="form-input" id="plNameInput" placeholder="Ex: Promoções, Cardápio, Destaques..." maxlength="60">
+                  <div class="form-error" id="plNameError"></div>
+                </div>
+
+                <!-- Aviso que só aparece ao CRIAR: a playlist nasce vazia e o
+                     conteúdo entra depois, pelo botão "Adicionar vídeos" dentro
+                     dela. Assim não existe upload solto, fora de uma playlist. -->
+                <div id="plNovaAviso" class="pl-info-badge" style="display:none;">
+                  📋 Dê um nome e salve. Depois, dentro da playlist, use <strong>➕ Adicionar vídeos</strong> para enviar os arquivos.
+                </div>
+
+                <!-- Todo o conteúdo (envio de arquivos, biblioteca e ordem de
+                     reprodução) vive neste bloco. Ele só aparece quando a
+                     playlist JÁ EXISTE — na criação, só o nome é pedido. -->
+                <div id="plContentBlock">
+                <div class="form-row">
+                  <div class="form-label" style="margin-bottom:8px;">Enviar novos arquivos para esta playlist</div>
+                  <div class="dropzone" id="dropzone-playlist">
+                    <input type="file" id="fileInput-playlist" accept="video/mp4,.mp4,image/*,.jpg,.jpeg,.png,.webp,.txt,text/plain" style="display:none">
+                    <svg class="dropzone-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242"></path><path d="M12 12v9"></path><path d="m16 16-4-4-4 4"></path></svg>
+                    <div class="dropzone-text">Arraste vídeos aqui ou <span class="dropzone-link">clique para selecionar</span></div>
+                    <div class="dropzone-hint">.mp4 · .jpg · .png · .webp — entram direto na playlist</div>
+                    <div class="dropzone-hint">.txt da balança — gera as 7 tabelas já precificadas e adiciona nesta playlist</div>
+                    <div class="warning-box"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"></path><path d="M12 9v4"></path><path d="M12 17h.01"></path></svg><span>O vídeo NÃO é convertido automaticamente — envie já em .mp4 (H.264 + AAC), senão pode não tocar em algumas Smart TVs.</span></div>
+                  </div>
+                  <div class="upload-list" id="uploadList-playlist"></div>
+                </div>
+
+                <div class="divider"></div>
+
+                <div class="form-row">
+                  <div class="form-label" style="display:flex; align-items:center; justify-content:space-between; margin-bottom:10px;">
+                    <span>Ordem de reprodução</span>
+                    <span id="plOrderCount" style="font-size:11px; color:var(--muted); text-transform:none; letter-spacing:0;">0 vídeo(s)</span>
+                  </div>
+                  <div class="form-error" id="plVideosError"></div>
+                  <div id="plOrderList" class="pl-order-list"></div>
+                  <div id="plOrderEmpty" style="color:var(--muted); font-size:12px; padding:12px 0;">
+                    Nenhum vídeo adicionado. Clique nos vídeos acima para incluí-los.
+                  </div>
+                </div>
+                </div><!-- /plContentBlock -->
+              </div>
+            </div>
+
+            <!-- Visualização de playlist existente -->
+            <div id="plView" style="display:none; flex-direction:column; flex:1; overflow:hidden;">
+              <div style="padding:16px 24px; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; flex-shrink:0;">
+                <div>
+                  <div class="content-title" id="plViewName"></div>
+                  <div class="content-subtitle" id="plViewCount"></div>
+                </div>
+                <div style="display:flex; gap:8px;">
+                  <button class="btn btn-accent btn-sm" onclick="addVideosToPlaylist()" id="plAddContentBtn">➕ Adicionar vídeos</button>
+                  <button class="btn btn-ghost btn-sm" onclick="editPlaylist()">✏️ Editar</button>
+                </div>
+              </div>
+              <div class="pl-edit-inner">
+                <div class="pl-info-badge">
+                  🔁 Esta playlist será reproduzida em loop contínuo na TV selecionada
+                </div>
+
+                <div class="section-label">Vídeos na ordem de reprodução</div>
+                <div id="plViewOrderList" class="pl-order-list" style="margin-bottom:20px;"></div>
+
+                <div class="divider"></div>
+
+                <div class="section-label">Enviar para TV</div>
+                <div class="pl-send-section">
+                  <div class="pl-send-title">Escolha a TV e inicie a playlist em loop</div>
+                  <div class="pl-send-row">
+                    <select class="pl-tv-select" id="plTvSelect">
+                      <option value="">— Selecione uma TV —</option>
+                    </select>
+                    <button class="btn btn-accent" onclick="sendPlaylistToTv()" id="plSendBtn" disabled>
+                      ▶ Iniciar Playlist
+                    </button>
+                  </div>
+                  <div style="margin-top:10px;">
+                    <button class="btn btn-ghost btn-sm" onclick="broadcastPlaylist()" id="plBroadcastBtn">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;flex-shrink:0;"><path d="M2 8V6a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-6"></path><path d="M2 12a9 9 0 0 1 8 8"></path><path d="M2 16a5 5 0 0 1 4 4"></path><line x1="2" x2="2.01" y1="20" y2="20"></line></svg>
+                      Enviar para todas as TVs
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== TAB CONTAS (só ADM — Fase 2) ===== -->
+    <div id="panel-contas" style="display:none; flex-direction:column; flex:1; overflow:hidden;">
+      <div class="playlist-manager">
+        <div class="playlist-header">
+          <div>
+            <div class="content-title">👤 Contas</div>
+            <div class="content-subtitle">Crie, edite e exclua contas de acesso ao VisionLoop</div>
+          </div>
+          <button class="btn btn-accent" onclick="openNewConta()">+ Nova Conta</button>
+        </div>
+        <div class="playlist-body">
+          <!-- Coluna esquerda: lista de contas -->
+          <div class="pl-list-col">
+            <div class="pl-list-col-header">
+              Contas cadastradas
+              <span class="tv-count" id="contaCount">0</span>
+            </div>
+            <div class="pl-list" id="contaList">
+              <div class="empty-tvs" style="padding:30px 16px;">
+                <div class="icon">👤</div>
+                <p>Carregando contas...</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Coluna direita: criação/edição -->
+          <div class="pl-edit-col">
+            <div class="pl-empty-state" id="contaEmptyState">
+              <img src="/assets/select-tv.png" class="no-selection-img" alt="">
+              <h3>Selecione uma conta</h3>
+              <p>Escolha uma conta à esquerda ou crie uma nova.</p>
+            </div>
+
+            <div id="contaForm" style="display:none; flex-direction:column; flex:1; overflow:hidden;">
+              <div style="padding:16px 24px; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; flex-shrink:0; flex-wrap:wrap; gap:10px;">
+                <div class="content-title" id="contaFormTitle">Nova Conta</div>
+                <div style="display:flex; gap:8px;">
+                  <button class="btn btn-ghost btn-sm" onclick="cancelContaEdit()">Cancelar</button>
+                  <button class="btn btn-red btn-sm" onclick="deleteConta()" id="contaDeleteBtn" style="display:none;">Excluir conta</button>
+                  <button class="btn btn-accent btn-sm" onclick="saveConta()" id="contaSaveBtn">Salvar</button>
+                </div>
+              </div>
+              <div class="pl-edit-inner">
+
+                <div class="form-row">
+                  <div class="form-label">Nome da empresa *</div>
+                  <input type="text" class="form-input" id="contaNomeInput" placeholder="Ex: Padaria do João" maxlength="80">
+                  <div class="form-error" id="contaNomeError"></div>
+                </div>
+
+                <div class="form-row">
+                  <div class="form-label">Papel</div>
+                  <select class="form-input" id="contaRoleInput">
+                    <option value="cliente">Cliente</option>
+                    <option value="adm">ADM</option>
+                  </select>
+                  <div class="form-hint" id="contaRoleHint"></div>
+                </div>
+
+                <div class="form-row">
+                  <div class="form-label" id="contaSenhaLabel">Senha *</div>
+                  <div class="pw-toggle-wrap">
+                    <input type="password" class="form-input" id="contaSenhaInput" placeholder="Mínimo 6 caracteres" autocomplete="new-password">
+                    <button type="button" class="pw-toggle-btn" id="contaSenhaToggleBtn" onclick="toggleContaSenhaVisivel()" aria-label="Mostrar senha" title="Mostrar senha">
+                      <svg id="contaSenhaToggleIconOpen" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8Z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                      <svg id="contaSenhaToggleIconClosed" style="display:none;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"></path><path d="M10.73 5.08A10.94 10.94 0 0 1 12 5c7 0 11 8 11 8a17.7 17.7 0 0 1-3.09 4.32M6.61 6.61A17.9 17.9 0 0 0 1 13s4 8 11 8a10.9 10.9 0 0 0 5.39-1.61"></path><path d="M2 2l20 20"></path></svg>
+                    </button>
+                  </div>
+                  <div class="form-error" id="contaSenhaError"></div>
+                </div>
+
+                <div class="form-row" style="display:flex; gap:16px; flex-wrap:wrap;">
+                  <div style="flex:1; min-width:140px;">
+                    <div class="form-label">Limite de TVs</div>
+                    <input type="number" class="form-input" id="contaLimiteTvsInput" min="1" step="1" value="1">
+                    <div class="form-hint" id="contaTvsPareadasHint"></div>
+                  </div>
+                  <div style="flex:1; min-width:140px;">
+                    <div class="form-label">Armazenamento (GB)</div>
+                    <input type="number" class="form-input" id="contaLimiteGbInput" min="0" step="0.5" value="5">
+                  </div>
+                </div>
+
+                <div class="form-row">
+                  <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-size:13px; margin-bottom:12px;">
+                    <input type="checkbox" id="contaLicencaPermanenteInput" onchange="toggleLicencaPermanente()">
+                    <span>Licença permanente (nunca expira, ignora a data abaixo)</span>
+                  </label>
+                  <div class="form-label">Licença válida até</div>
+                  <input type="date" class="form-input" id="contaLicencaInput">
+                  <div class="form-hint">Contas ADM não precisam de validade. Contas cliente sem essa data (e sem "licença permanente" marcado) ficam com o login bloqueado.</div>
+                  <div id="contaLicencaStatus" style="font-size:12px; font-weight:600; margin-top:6px; min-height:16px;"></div>
+                </div>
+
+                <div class="form-row">
+                  <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-size:13px;">
+                    <input type="checkbox" id="contaAtivaInput" checked>
+                    <span>Conta ativa (desmarque para suspender o acesso)</span>
+                  </label>
+                </div>
+
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </section>
+</main>
+
+<!-- Perguntado toda vez que alguém envia arquivo (0.6.9). "Sem validade" é o
+     padrão: o arquivo fica até ser excluído à mão. -->
+<div class="modal-overlay" id="expiryModal">
+  <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="expiryTitle">
+    <div class="modal-title" id="expiryTitle">Definir prazo de validade?</div>
+    <div class="modal-sub" id="expirySub">Escolha até quando este conteúdo deve ficar no ar.</div>
+
+    <label class="radio-row">
+      <input type="radio" name="expiryChoice" value="never" checked onchange="onExpiryChoiceChange()">
+      <span>
+        <strong>Sem prazo</strong>
+        <small>Fica no ar por tempo indeterminado, até você excluir o arquivo.</small>
+      </span>
+    </label>
+
+    <label class="radio-row">
+      <input type="radio" name="expiryChoice" value="date" onchange="onExpiryChoiceChange()">
+      <span>
+        <strong>Expirar em uma data e hora</strong>
+        <small>Ao chegar o prazo, o arquivo sai sozinho da fila de execução das TVs e é removido das playlists que o usam.</small>
+      </span>
+    </label>
+
+    <div class="expiry-warning" id="expiryIndisponivel" style="display:none;">
+      ⚠️ O prazo de validade está indisponível: falta a coluna
+      <strong>expira_em</strong> na tabela <strong>midia</strong> do banco.
+      Até ela existir, os arquivos são enviados sem prazo e tudo o mais
+      funciona normalmente.
+    </div>
+
+    <div class="expiry-field" id="expiryField">
+      <input type="datetime-local" id="expiryInput" class="form-input">
+      <div class="form-error" id="expiryError"></div>
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn btn-ghost btn-sm" onclick="closeExpiryModal(null)">Cancelar</button>
+      <button class="btn btn-accent btn-sm" id="expiryConfirmBtn" onclick="confirmExpiry()">Enviar</button>
+    </div>
+  </div>
+</div>
+
+<script src="/js/controller.js"></script>
+</body>
+</html>

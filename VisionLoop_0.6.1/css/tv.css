@@ -1,0 +1,228 @@
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  /* Cores no formato de variaveis para o botao de tema poder trocar tudo de
+     uma vez. Os valores abaixo SAO os que voce definiu (gradiente azul/roxo,
+     code-box em degrade, etc.) — nada de visual mudou aqui, so virou variavel. */
+  :root {
+    --bg: linear-gradient(135deg, #c4d1ed 0%, #e6effb 45%, #dcccf5 75%, #e4d9fb 100%);
+    --panel-bg: linear-gradient(135deg, #bdcced 0%, #b2b1f8 45%, #d89cf2 75%, #e4d9fb 100%);
+    --panel-border: #c9e5fe;
+    --input-bg: #ffffff;
+    --input-border: #1a1919;
+    --text: #1a1a1a;
+    --text-dim: #666;
+    --text-dim2: #555;
+    --text-dim3: #444;
+    --code-value: #4f4e5a;
+    --accent: #6c63ff;
+    --accent-light: #a89fff;
+    --green: #22c55e;
+    --red: #ef4444;
+    --amber: #f59e0b;
+  }
+
+  /* Alternativa escura (era o visual original antes das suas edições).
+     So entra quando o body recebe a classe "dark". */
+  body.dark {
+    --bg: linear-gradient(135deg, #020427 0%, #0f0524 50%, #110c25 100%);
+    --panel-bg: #111;
+    --panel-border: #222;
+    --input-bg: #111;
+    --input-border: #333;
+    --text: #ffffff;
+    --text-dim: #d6cece;
+    --text-dim2: #cbc8c8;
+    --text-dim3: #fcfbfb;
+    --code-value: #8680fc;
+    --accent: #6c63ff;
+    --accent-light: #a89fff;
+    --green: #22c55e;
+    --red: #ef4444;
+    --amber: #f59e0b;
+  }
+
+  body {
+    background: var(--bg);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    height: 100vh; overflow: hidden;
+    display: flex; align-items: center; justify-content: center;
+    transition: background 0.2s;
+  }
+
+  #videoContainer { width: 100%; height: 100%; position: relative; display: none; }
+
+  video, #imageDisplay {
+    width: 100%; height: 100%; object-fit: contain; background: #000;
+    position: absolute; top: 0; left: 0;
+    transition: opacity 0.8s ease-in-out;
+  }
+
+  #imageDisplay {
+    display: none;
+    background-size: contain;
+    background-repeat: no-repeat;
+    background-position: center;
+    opacity: 0;
+  }
+
+  video { opacity: 0; }
+  video.visible, #imageDisplay.visible { opacity: 1; }
+
+  #overlay {
+    position: absolute; inset: 0;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    background: rgba(0,0,0,0.6); opacity: 0; transition: opacity 0.5s; pointer-events: none;
+    z-index: 10;
+  }
+  #overlay.show { opacity: 1; }
+  #overlayIcon { font-size: 72px; }
+  #overlayText { font-size: 20px; margin-top: 16px; color: rgba(255,255,255,0.7); }
+
+  #plBadge {
+    position: absolute; bottom: 28px; left: 50%; transform: translateX(-50%);
+    background: rgba(108,99,255,0.85); color: #fff;
+    border-radius: 24px; padding: 8px 20px;
+    font-size: 14px; font-weight: 600; letter-spacing: 0.2px;
+    display: none; gap: 8px; align-items: center;
+    backdrop-filter: blur(8px);
+    white-space: nowrap; max-width: 90vw; overflow: hidden; text-overflow: ellipsis;
+    z-index: 20;
+  }
+  #plBadge.show { display: flex; }
+
+  /* ---------- Theme toggle ---------- */
+  #themeToggle {
+    position: fixed; top: 18px; right: 18px; z-index: 30;
+    width: 40px; height: 40px; border-radius: 50%;
+    background: var(--input-bg); border: 1px solid var(--panel-border);
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; color: var(--text-dim);
+    transition: background 0.2s, border-color 0.2s;
+  }
+  #themeToggle svg { width: 18px; height: 18px; flex-shrink: 0; }
+  /* Claro/degrade é o padrão desta pagina (do jeito que voce editou): mostra
+     a lua (clique pra escurecer). No tema escuro (body.dark) mostra o sol. */
+  #iconMoon { color: var(--text-dim); }
+  #iconSun { display: none; color: var(--amber); }
+  body.dark #iconMoon { display: none; }
+  body.dark #iconSun { display: block; }
+
+  #backBtnTv {
+    position: fixed; top: 18px; left: 18px; z-index: 30;
+    display: inline-flex; align-items: center; gap: 7px;
+    background: var(--input-bg); border: 1px solid var(--panel-border);
+    border-radius: 999px; padding: 9px 16px; font-size: 13px;
+    color: var(--text-dim); cursor: pointer; font-family: inherit;
+    transition: background 0.2s, color 0.2s;
+  }
+  #backBtnTv svg { width: 15px; height: 15px; flex-shrink: 0; }
+  #backBtnTv:hover { color: var(--text); }
+
+  #standby {
+    display: flex; flex-direction: column; align-items: center;
+    gap: 28px; text-align: center; padding: 40px;
+  }
+
+  .logo-big { width: 200px; margin: 0 auto; display: block; }
+  .code-box {
+    background: var(--panel-bg); border: 2px solid var(--panel-border); border-radius: 16px; padding: 24px 40px;
+  }
+  .code-label { font-size: 22px; font-weight: 700; color: var(--text); text-transform: uppercase; letter-spacing: 1px; margin-top: 4px; margin-bottom: 10px; }
+  .code-value {
+    font-size: 52px; font-family: 'SF Mono', 'Fira Code', monospace;
+    font-weight: 700; letter-spacing: 8px; color: var(--code-value); min-height: 60px;
+  }
+
+  .name-input-wrap { display: flex; gap: 10px; align-items: center; }
+
+  input[type="text"] {
+    background: var(--input-bg); border: 1px solid var(--input-border); border-radius: 8px;
+    color: var(--text); font-size: 15px; padding: 10px 14px; outline: none;
+    width: 220px; transition: border-color 0.2s;
+  }
+  input[type="text"]:focus { border-color: var(--accent); }
+
+  button {
+    background: var(--accent); color: #fff; border: none; border-radius: 8px;
+    padding: 10px 18px; font-size: 14px; font-weight: 600; cursor: pointer; transition: opacity 0.15s;
+  }
+  button:hover { opacity: 0.85; }
+
+  .pair-info {
+    display: flex; flex-direction: column; align-items: center; gap: 8px;
+    font-size: 13px; color: var(--text-dim);
+  }
+  .pair-info strong { color: var(--accent-light); font-family: 'SF Mono', 'Fira Code', monospace; letter-spacing: 2px; }
+  .pair-status { font-size: 12px; color: var(--text-dim2); }
+  .pair-status.off { color: var(--amber); }
+  .pair-status.on { color: var(--green); }
+  .pair-change-btn {
+    background: transparent; color: var(--text-dim); border: 1px solid var(--input-border); border-radius: 8px;
+    padding: 8px 18px; font-size: 13px; font-weight: 600; cursor: pointer;
+  }
+  .pair-change-btn:hover { color: var(--text); border-color: var(--accent); }
+
+  .compat-toggle {
+    display: flex; align-items: flex-start; gap: 10px; cursor: pointer;
+    max-width: 460px; text-align: left; font-size: 12px; color: var(--text-dim2); line-height: 1.5;
+  }
+  .compat-toggle input { width: 18px; height: 18px; flex-shrink: 0; margin-top: 1px; accent-color: var(--accent); }
+  .compat-toggle.on { color: var(--accent-light); }
+
+  .conn-status { font-size: 12px; color: var(--text-dim3); display: flex; align-items: center; gap: 6px; }
+  .conn-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--input-border); transition: background 0.3s; }
+  .conn-dot.ok { background: var(--green); }
+  .conn-dot.error { background: var(--red); }
+
+  .ip-screen {
+    display: flex; flex-direction: column; align-items: center;
+    gap: 32px; text-align: center; padding: 40px;
+  }
+  .ip-title { font-size: 22px; font-weight: 600; color: var(--text); }
+  .ip-subtitle { font-size: 14px; color: var(--text-dim2); }
+  .ip-single {
+    background: var(--input-bg); border: 2px solid var(--input-border); border-radius: 12px;
+    color: var(--text); font-size: 32px; font-family: 'SF Mono', 'Fira Code', 'Courier New', monospace;
+    font-weight: 700; width: 320px; text-align: center; padding: 16px 12px; outline: none;
+    letter-spacing: 2px; transition: border-color 0.2s, box-shadow 0.2s;
+  }
+  .ip-single:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(248, 247, 252, 0.15); }
+  .ip-single.filled { border-color: var(--accent); color: var(--accent-light); }
+  .ip-hint { font-size: 13px; color: var(--text-dim3); }
+  .ip-hint strong { color: var(--text-dim); }
+  .ip-connect-btn {
+    background: var(--accent); color: #fff; border: none; border-radius: 12px;
+    padding: 14px 48px; font-size: 16px; font-weight: 700; cursor: pointer;
+    transition: opacity 0.15s, transform 0.1s; letter-spacing: 0.5px;
+  }
+  .ip-connect-btn:hover { opacity: 0.85; }
+  .ip-connect-btn:active { transform: scale(0.97); }
+  .ip-connect-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+  .ip-error { font-size: 13px; color: var(--red); min-height: 18px; }
+
+  #fsOverlay {
+    display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85);
+    z-index: 9999; align-items: center; justify-content: center;
+    flex-direction: column; gap: 24px;
+  }
+  #fsOverlay.show { display: flex; }
+  #fsBtn {
+    background: var(--accent); color: #fff; border: none; border-radius: 16px;
+    padding: 22px 64px; font-size: 22px; font-weight: 700; cursor: pointer;
+    box-shadow: 0 0 0 4px rgba(108,99,255,0.4); transition: opacity 0.15s, transform 0.1s;
+  }
+  #fsBtn:hover, #fsBtn:focus { opacity: 0.88; outline: 3px solid #fff; transform: scale(1.03); }
+  #fsLabel { font-size: 15px; color: var(--text-dim); }
+
+  /* ================= RESPONSIVO ================= */
+  @media (max-width: 480px) {
+    .logo-big { width: 140px; }
+    #standby { gap: 20px; padding: 24px; }
+    .code-box { padding: 18px 24px; }
+    .code-value { font-size: 38px; letter-spacing: 5px; }
+    .name-input-wrap { flex-direction: column; align-items: stretch; width: 100%; max-width: 260px; }
+    input[type="text"] { width: 100%; }
+    #themeToggle { top: 12px; right: 12px; }
+    #backBtnTv { top: 12px; left: 12px; padding: 8px 14px; }
+    #fsBtn { padding: 18px 36px; font-size: 18px; }
+  }
